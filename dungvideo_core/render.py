@@ -320,7 +320,43 @@ class Timeline:
         self.pool.close()
 
 
-def _audio_args(tl: Timeline, total: float):
+def _sfx_track(tl: Timeline, total: float, path: Path):
+    """Trộn tiếng động của các cảnh (whoosh, pop, hit...) thành một file WAV; None nếu không có."""
+    import wave
+    from .amthanh import SFX_DIR, SR
+    if not tl.p.get("tieng_dong", True) or not SFX_DIR.is_dir():
+        return None
+    ev = [(sc.start + t, name, g) for sc in tl.scenes for t, name, g in sc.sfx() if sc.start + t < total]
+    if not ev:
+        return None
+    buf = np.zeros((int(total * SR) + 1, 2), np.float32)
+    cache = {}
+    for t, name, g in ev:
+        if name not in cache:
+            f = SFX_DIR / f"{name}.wav"
+            if not f.exists():
+                cache[name] = None
+                continue
+            with wave.open(str(f)) as wf:
+                cache[name] = np.frombuffer(wf.readframes(wf.getnframes()), "<i2").reshape(-1, 2) / 32768.0
+        x = cache[name]
+        if x is None:
+            continue
+        i = int(t * SR)
+        seg = x[: len(buf) - i]
+        buf[i:i + len(seg)] += seg * g
+    buf *= float(tl.p.get("am_luong_tieng_dong", 0.45))
+    pcm = (np.clip(buf, -1, 1) * 32767).astype("<i2")
+    with wave.open(str(path), "wb") as wf:
+        wf.setnchannels(2)
+        wf.setsampwidth(2)
+        wf.setframerate(SR)
+        wf.writeframes(pcm.tobytes())
+    print(f"  Tiếng động: {len(ev)} chỗ (whoosh, pop, hit...)")
+    return path
+
+
+def _audio_args(tl: Timeline, total: float, sfx_path=None):
     args, filt, maps = [], [], []
     idx = 1
     mlabel = vlabel = None
@@ -338,13 +374,19 @@ def _audio_args(tl: Timeline, total: float):
         filt.append(f"[{idx}:a]atrim=0:{total:.3f},asetpts=PTS-STARTPTS,volume={vv},apad[v]")
         vlabel = "[v]"
         idx += 1
-    if mlabel and vlabel:
-        filt.append(f"{mlabel}{vlabel}amix=inputs=2:duration=first:normalize=0[a]")
+    labels = [x for x in (mlabel, vlabel) if x]
+    if sfx_path:
+        args += ["-i", str(sfx_path)]
+        filt.append(f"[{idx}:a]atrim=0:{total:.3f},asetpts=PTS-STARTPTS,apad[s]")
+        labels.append("[s]")
+        idx += 1
+    if len(labels) > 1:
+        # limiter: nhạc + giọng + tiếng động cộng lại dễ vượt 0 dB (rè), giữ đỉnh ở khoảng -1 dB
+        filt.append(f"{''.join(labels)}amix=inputs={len(labels)}:duration=first:normalize=0,"
+                    f"alimiter=limit=0.89:level=0[a]")
         maps = ["-map", "[a]"]
-    elif mlabel:
-        maps = ["-map", mlabel]
-    elif vlabel:
-        maps = ["-map", vlabel]
+    elif labels:
+        maps = ["-map", labels[0]]
     if filt:
         args += ["-filter_complex", ";".join(filt)]
     return args, maps
@@ -356,7 +398,8 @@ def render(project: dict, base_dir: Path, out: Path, draft: bool = False) -> Pat
     nframes = int(round(total * tl.fps))
     out = Path(out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    a_args, a_maps = _audio_args(tl, total)
+    sfx = _sfx_track(tl, total, out.with_name(out.stem + "_tieng_dong.wav"))
+    a_args, a_maps = _audio_args(tl, total, sfx)
     cmd = [ffmpeg_bin(), "-y", "-v", "error", "-f", "rawvideo", "-pix_fmt", "rgb24",
            "-s", f"{tl.W}x{tl.H}", "-r", f"{tl.fps}", "-i", "-"] + a_args + ["-map", "0:v"] + a_maps
     cmd += ["-c:v", "libx264", "-preset", "ultrafast" if draft else str(project.get("preset", "veryfast")),
@@ -379,6 +422,8 @@ def render(project: dict, base_dir: Path, out: Path, draft: bool = False) -> Pat
         rc = proc.wait()
     finally:
         tl.close()
+        if sfx:
+            sfx.unlink(missing_ok=True)
     if rc != 0:
         raise SystemExit("ffmpeg báo lỗi khi xuất video.")
     prog.done()

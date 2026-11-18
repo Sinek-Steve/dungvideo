@@ -1,0 +1,12 @@
+ten: Tường ảnh
+mo_ta: lưới 2x3 và 3x4 đổi hình đồng loạt theo nhịp, chữ nằm giữa lưới
+mau_sac: lanh
+nhac: [techno, house]
+mo_dau:
+  - {loai: tuong_anh, so: 12, cot: 3, hang: 4, doi: nua_nhip, tieu_de: true, nhip: 6}
+than:
+  - {loai: tuong_anh, so: 6, cot: 2, hang: 3, chu: true, nhip: 4, nhip_co_chu: 6}
+  - {loai: nhay, so: 6, vao: [punch], nhip: 2}
+ket:
+  - {loai: nghi_den, nhip: 1}
+  - {loai: ket, nhip: 4}

@@ -1,0 +1,25 @@
+# Công thức mẫu DựngVideo. Chép file này, đổi tên, sửa vài dòng là có mẫu mới.
+# mo_dau: các khối mở đầu, chạy lần lượt.
+# than:   các khối thân, lặp vòng cho tới gần hết video.
+# ket:    các khối kết.
+# Khóa riêng của công thức: so (số file media lấy), nhip, nhip_co_chu, chu: true (nhận lần lượt dòng chữ
+# trong chu.txt), tieu_de: true (hiện tiêu đề), toi_drop: true (kéo khối tới đúng lúc nhạc drop),
+# dai_nhip (số nhịp để dải ngang mở hết). Khóa kieu/hinh/font/vi_tri/zoom/chuyen/mau_nhan/nen nếu là danh
+# sách thì mỗi lần khối lặp lại sẽ lấy phần tử kế tiếp. Các khóa khác chuyển thẳng cho cảnh (xem: hieu-ung).
+ten: Nhịp nhanh ráp hình
+mo_ta: dồn cắt theo nốt, vạch ngang mở tiêu đề, khối ráp hình xen dồn cắt có hiệu ứng
+mau_sac: dien_anh
+nhac: [trap, future_bass, edm]
+do_dai: 30
+mo_dau:
+  - {loai: nhay, so: 8, nguong: 2.0, vao: [nhoe, punch], nhip: 4}
+  - {loai: nghi_den, nhip: 1}
+  - {loai: nhay, so: 1, tieu_de: true, font: impact, dai_tu: 0.004, dai_den: 1.0, dai_nhip: 2, nhip: 4}
+  - {loai: nghi_den, nhip: 1}
+  - {loai: nhay, so: 10, dai_tu: 0.004, dai_den: 0.42, toi_drop: true, nhip: 8}
+than:
+  - {loai: rap_hinh, kieu: [tron_cheo, thoi_x, sao, o_vuong, x, luc_giac, tron_doc], chu: true, nhip: 4, nhip_co_chu: 6}
+  - {loai: nhay, so: 6, vao: [nhoe, punch, rung, punch], nhip: 2}
+ket:
+  - {loai: nghi_den, nhip: 1}
+  - {loai: ket, nhip: 4}

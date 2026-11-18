@@ -21,12 +21,19 @@ CÁC LOẠI CẢNH (loai):
   flash    : chớp nhanh nhiều ảnh (1 ảnh cũng được). Khóa: media, moi (nhip|nua_nhip|0.3)
   so_sanh  : 2-3 ảnh/biểu đồ chồng dọc. Khóa: media, nhan [HPG, HSG], chi_so [+3%, -1%], vs (true/false)
   ket      : màn kết. Khóa: chu (handle), phu, nut, media (nền mờ)
+  nhay     : dồn cắt theo từng nốt nhạc, cắt thẳng, không nhún. Khóa: media [list], cat (not|nua_nhip|nhip|0.2),
+             nguong (độ mạnh nốt, mặc định 1.5; lớn hơn = ít cắt hơn), cat_toi_thieu (giây, mặc định 0.12),
+             dai_tu / dai_den / dai_giay (dải ngang mở dần, tỉ lệ chiều cao 0..1),
+             vao [punch, rung, nhoe, chop] (hiệu ứng ở các cú cắt trúng phách, dùng lần lượt), chu, phu
+  rap_hinh : ráp hình từ CÙNG một clip, mảnh nở theo nốt nhạc rồi ráp kín khung. Khóa: media,
+             kieu (tron_cheo|tron_doc|thoi_x|x|sao|luc_giac|o_vuong), mau_nhan (màu tấm màu), khe, chu, phu
+  nghi_den : khoảng nghỉ màn hình đen. Khóa: chu
 
 THỜI LƯỢNG mỗi cảnh: nhip (số beat, mặc định 4) hoặc giay.
 CHUYỂN CẢNH (chuyen, áp vào đầu cảnh): cat | mo | flash | zoom | truot | truot_ngang | vblur | glitch
 MÀU (mau_sac): dien_anh | sang | lanh | am | tu_nhien
 KHUNG (khung.kieu): toi_gian | phim | hud
-MẪU TỰ ĐỘNG (--mau): tin-nhanh | dien-anh | slideshow
+MẪU TỰ ĐỘNG (--mau): tin-nhanh | dien-anh | slideshow | <tên mẫu trong kho_mau/> | ngau_nhien
 """
 
 DEFAULT_CFG = {
@@ -75,18 +82,22 @@ def write_project(proj: dict, path: Path):
 
 def cmd_auto(a, cfg):
     from .render import render
-    from .templates import TEMPLATES, plan
+    from .templates import all_templates, pick_template, plan
     folder = Path(a.thu_muc).expanduser().resolve()
     if not folder.is_dir():
         raise SystemExit(f"Không phải thư mục: {folder}")
-    tpl = a.mau or cfg.get("mau", "tin-nhanh")
-    if tpl not in TEMPLATES:
-        raise SystemExit(f"Mẫu không hợp lệ: {tpl}. Chọn: {', '.join(TEMPLATES)}")
+    tpl = pick_template(a.mau or cfg.get("mau", "tin-nhanh"))
+    if tpl not in all_templates():
+        raise SystemExit(f"Mẫu không hợp lệ: {tpl}. Chọn: {', '.join(all_templates())} hoặc ngau_nhien")
     planned = plan(folder, tpl, a.tieu_de, a.nhac, a.giong, a.phu_de, a.giay, a.nhac_bat_dau or 0.0)
+    style = planned.pop("_phong_cach", {})
     proj = {k: cfg[k] for k in ("kich_thuoc", "fps", "mau_sac", "vignette", "thanh_tien_do") if k in cfg}
+    proj.update({k: v for k, v in style.items() if k != "khung"})
     if a.mau_sac:
         proj["mau_sac"] = a.mau_sac
     khung = dict(cfg.get("khung") or {})
+    st_k = style.get("khung")
+    khung.update(st_k if isinstance(st_k, dict) else ({"kieu": st_k} if st_k else {}))
     logo = planned.pop("_logo", None)
     if logo and not khung.get("logo"):
         khung["logo"] = logo
@@ -151,7 +162,7 @@ def main(argv=None):
     setup_console()
     argv = list(sys.argv[1:] if argv is None else argv)
     # kéo-thả: 1 đường dẫn duy nhất -> tự đoán lệnh
-    if len(argv) >= 1 and argv[0] not in ("auto", "render", "chup", "demo", "hieu-ung", "-h", "--help"):
+    if len(argv) >= 1 and argv[0] not in ("auto", "render", "chup", "demo", "hieu-ung", "tao-nhac", "-h", "--help"):
         p = Path(argv[0])
         if p.is_dir():
             argv = ["auto"] + argv
@@ -162,7 +173,7 @@ def main(argv=None):
 
     p = sp.add_parser("auto", help="Tự dựng video từ một thư mục ảnh/clip")
     p.add_argument("thu_muc")
-    p.add_argument("--mau", help="tin-nhanh | dien-anh | slideshow")
+    p.add_argument("--mau", help="tin-nhanh | dien-anh | slideshow | <tên mẫu trong kho_mau/> | ngau_nhien")
     p.add_argument("--tieu-de", dest="tieu_de")
     p.add_argument("--nhac")
     p.add_argument("--nhac-bat-dau", dest="nhac_bat_dau", type=float, help="Bắt đầu nhạc từ giây thứ ...")
@@ -192,6 +203,10 @@ def main(argv=None):
 
     sp.add_parser("hieu-ung", help="Liệt kê cảnh/hiệu ứng")
 
+    p = sp.add_parser("tao-nhac", help="Tự tổng hợp thư viện nhạc nền (nhac/) và tiếng động (tieng_dong/)")
+    p.add_argument("--so", type=int, default=3, help="Số bài cho mỗi phong cách (mặc định 3)")
+    p.add_argument("--kieu", nargs="*", help="Chỉ tạo các phong cách này (trap, house, lofi...)")
+
     a = ap.parse_args(argv)
     cfg = load_cfg()
     if a.cmd == "auto":
@@ -202,7 +217,20 @@ def main(argv=None):
         cmd_still(a, cfg)
     elif a.cmd == "demo":
         cmd_demo(a, cfg)
+    elif a.cmd == "tao-nhac":
+        from .amthanh import NHAC_DIR, SFX_DIR, STYLES, tao_thu_vien, tao_tieng_dong
+        print(f"Đang tạo tiếng động -> {SFX_DIR}")
+        tao_tieng_dong()
+        print(f"Đang soạn nhạc ({', '.join(a.kieu or STYLES)}) -> {NHAC_DIR}")
+        rows = tao_thu_vien(a.so, a.kieu)
+        print(f"\nXONG! {len(rows)} bài nhạc trong {NHAC_DIR}")
     elif a.cmd == "hieu-ung":
         print(HELP_EFFECTS)
+        from .templates import list_recipes
+        rcs = list_recipes()
+        if rcs:
+            print("KHO MẪU RIÊNG (kho_mau/, dùng: --mau <tên> hoặc --mau ngau_nhien):")
+            for name, rc in rcs.items():
+                print(f"  {name:22s}: {rc.get('ten', '')} - {rc.get('mo_ta', '')}")
     else:
         ap.print_help()

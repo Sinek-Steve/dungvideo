@@ -46,8 +46,7 @@ def text_size(txt: str, f) -> tuple[int, int]:
     return r - l, b - t
 
 
-def wrap(text: str, f, max_w: int) -> list[str]:
-    words = nfc(text).split()
+def _wrap_greedy(words: list[str], f, max_w: int) -> list[str]:
     lines, cur = [], ""
     for w in words:
         cand = (cur + " " + w).strip()
@@ -59,6 +58,24 @@ def wrap(text: str, f, max_w: int) -> list[str]:
     if cur:
         lines.append(cur)
     return lines
+
+
+def wrap(text: str, f, max_w: int) -> list[str]:
+    """Xuống dòng cân: giữ số dòng như cách ngắt thường, nhưng chia các dòng dài gần bằng nhau
+    (tránh 1 chữ lẻ rớt xuống dòng cuối)."""
+    words = nfc(text).split()
+    lines = _wrap_greedy(words, f, max_w)
+    if len(lines) < 2:
+        return lines
+    # tìm bề rộng nhỏ nhất mà vẫn ra đúng số dòng đó
+    lo, hi = 1, max_w
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if len(_wrap_greedy(words, f, mid)) <= len(lines):
+            hi = mid
+        else:
+            lo = mid + 1
+    return _wrap_greedy(words, f, lo)
 
 
 def fit_font(text: str, kind: str, max_w: int, max_h: int, start: int, min_size: int = 18,

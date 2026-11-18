@@ -1,0 +1,7 @@
+# Video xuất, thư mục thử và nhạc tự tạo (tạo lại bằng: python dungvideo.py tao-nhac)
+xuat/
+thu_nghiem/
+nhac/
+demo_media/
+__pycache__/
+*.pyc

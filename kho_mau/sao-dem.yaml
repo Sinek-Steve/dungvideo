@@ -1,0 +1,14 @@
+ten: Sao đêm
+mo_ta: sao, lục giác, dấu cộng; khung REC, tông lạnh, dồn cắt nhòe
+mau_sac: lanh
+khung: hud
+nhac: [synthwave, techno]
+mo_dau:
+  - {loai: nghi_den, nhip: 1}
+  - {loai: rap_hinh, kieu: sao, tieu_de: true, nhip: 6}
+than:
+  - {loai: rap_hinh, kieu: [luc_giac, cong, sao], mau_nhan: [xanh_la, vang], chu: true, nhip: 4, nhip_co_chu: 6}
+  - {loai: nhay, so: 6, vao: [nhoe, rung], nhip: 2}
+ket:
+  - {loai: nghi_den, nhip: 1}
+  - {loai: ket, nhip: 4}

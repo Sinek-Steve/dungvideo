@@ -1,0 +1,12 @@
+ten: Trình chiếu chớp
+mo_ta: "hợp thư mục nhiều ảnh tĩnh: chớp ảnh theo nửa nhịp xen ráp hình"
+mau_sac: dien_anh
+nhac: [future_bass, lofi]
+mo_dau:
+  - {loai: tieu_de, tieu_de: true, nen: media, so: 1, nhip: 4}
+than:
+  - {loai: flash, so: 6, moi: nua_nhip, nhip: 4}
+  - {loai: rap_hinh, kieu: [tron_cheo, o_vuong, kim_cuong, elip], chu: true, nhip: 4, nhip_co_chu: 6}
+ket:
+  - {loai: luoi, tieu_de: true, chuyen: zoom, nhip: 8}
+  - {loai: ket, nhip: 4}

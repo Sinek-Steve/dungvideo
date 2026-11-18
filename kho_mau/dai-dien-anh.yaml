@@ -1,0 +1,15 @@
+ten: Dải điện ảnh
+mo_ta: khung cinemascope, vạch ngang mở dần, hình đổi theo nốt trong dải, nghỉ đen giữa các câu
+mau_sac: dien_anh
+khung: phim
+nhac: [cinematic, synthwave]
+mo_dau:
+  - {loai: nghi_den, nhip: 1}
+  - {loai: nhay, so: 1, tieu_de: true, font: impact, dai_tu: 0.004, dai_den: 0.42, dai_nhip: 3, nhip: 6}
+  - {loai: nghi_den, nhip: 1}
+than:
+  - {loai: nhay, so: 10, nguong: 2.0, dai_tu: 0.42, dai_den: 0.42, chu: true, nhip: 6, nhip_co_chu: 8}
+  - {loai: nghi_den, nhip: 1}
+ket:
+  - {loai: nhay, so: 1, dai_tu: 0.42, dai_den: 0.0, dai_nhip: 3, nhip: 4}
+  - {loai: ket, nhip: 4}

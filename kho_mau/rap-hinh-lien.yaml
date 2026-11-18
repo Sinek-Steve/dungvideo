@@ -1,0 +1,11 @@
+ten: Ráp hình liên tục
+mo_ta: khối ráp hình nối nhau đủ 14 kiểu, mỗi câu chữ một khối
+mau_sac: dien_anh
+nhac: [future_bass, edm]
+mo_dau:
+  - {loai: rap_hinh, kieu: sao, tieu_de: true, nhip: 6}
+than:
+  - {loai: rap_hinh, kieu: [tron_cheo, zigzag, luoi_o, x, elip, kim_cuong, tron_hang, tam_giac, o_vuong, luc_giac, thoi_x, cong, tron_doc, sao], chu: true, nhip: 3, nhip_co_chu: 5}
+ket:
+  - {loai: nghi_den, nhip: 1}
+  - {loai: ket, nhip: 4}

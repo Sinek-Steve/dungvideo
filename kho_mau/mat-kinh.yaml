@@ -1,0 +1,13 @@
+ten: Mắt kính
+mo_ta: elip kiểu mắt/ống kính, hàng tròn, lộ cảnh qua hình tròn nở
+mau_sac: lanh
+nhac: [synthwave, future_bass]
+mo_dau:
+  - {loai: rap_hinh, kieu: elip, tieu_de: true, nhip: 6}
+than:
+  - {loai: rap_hinh, kieu: [elip, tron_hang], chu: true, nhip: 4, nhip_co_chu: 6}
+  - {loai: hinh_mo, hinh: [tron, luc_giac], nhip: 3}
+  - {loai: nhay, so: 5, vao: [nhoe], nhip: 2}
+ket:
+  - {loai: nghi_den, nhip: 1}
+  - {loai: ket, nhip: 4}

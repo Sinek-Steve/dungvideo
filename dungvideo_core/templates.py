@@ -9,14 +9,39 @@ Quy tắc dựng rút ra từ các reel CapCut đã xem:
 """
 from __future__ import annotations
 
+import random
 import re
 from pathlib import Path
 
+import yaml
+
 from .beats import detect, synthetic
 from .media import probe_duration
-from .util import AUD_EXT, IMG_EXT, VID_EXT
+from .util import AUD_EXT, IMG_EXT, ROOT, VID_EXT
 
 TEMPLATES = ("tin-nhanh", "dien-anh", "slideshow")
+KHO_MAU = ROOT / "kho_mau"   # kho mẫu riêng: mỗi file .yaml là một công thức dựng
+
+
+def list_recipes() -> dict:
+    """{tên mẫu: công thức} của mọi file trong kho_mau/."""
+    out = {}
+    for p in sorted(KHO_MAU.glob("*.yaml")) if KHO_MAU.is_dir() else []:
+        rc = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+        out[p.stem] = rc
+    return out
+
+
+def all_templates() -> list:
+    return list(TEMPLATES) + list(list_recipes())
+
+
+def pick_template(name: str) -> str:
+    """'ngau_nhien' -> chọn ngẫu nhiên một mẫu trong kho."""
+    if name == "ngau_nhien":
+        names = list(list_recipes()) or list(TEMPLATES)
+        return random.choice(names)
+    return name
 
 
 def _natural_key(p: Path):
@@ -129,6 +154,12 @@ def plan(folder: Path, template: str = "tin-nhanh", title: str | None = None, mu
         raise SystemExit(f"Thư mục {folder} không có ảnh/clip nào.")
     music = Path(music) if music else info["music"]
     voice = Path(voice) if voice else info["voice"]
+    recipe = list_recipes().get(template) if template not in TEMPLATES else None
+    if not music:
+        from .amthanh import chon_nhac
+        music = chon_nhac((recipe or {}).get("nhac"))
+        if music:
+            print(f"Thư mục chưa có nhạc -> lấy từ thư viện nhac/: {music.name}")
     srt = Path(srt) if srt else info["srt"]
     lines = list(info["lines"])
     if not title:
@@ -159,6 +190,9 @@ def plan(folder: Path, template: str = "tin-nhanh", title: str | None = None, mu
         total = min(probe_duration(str(music)) - music_start, max(12.0, n * 1.6 + 5), 60.0)
     else:
         total = min(max(n * 1.3 + 4, 8.0), 60.0)
+    if recipe is not None and not seconds and not voice:
+        cap = float(recipe.get("do_dai", 30))
+        total = min(probe_duration(str(music)) - music_start, cap) if music else min(cap, 20.0)
 
     if music:
         print("Đang dò nhịp nhạc để lên kịch bản...")
@@ -182,6 +216,13 @@ def plan(folder: Path, template: str = "tin-nhanh", title: str | None = None, mu
             return dict(captions[cap_i - 1])
         return {}
 
+    if recipe is not None:
+        # mẫu trong kho: chữ không gắn vào từng file (mỗi file có thể chỉ hiện ~0,2s) -> dùng các dòng theo thứ tự
+        texts = [parse_caption(re.sub(r"^\s*\d+\s*:\s*", "", l)) for l in lines]
+        _plan_recipe(P, recipe, title, texts)
+        proj = _project(P, music, music_start, voice, srt, info, total, seconds)
+        proj["_phong_cach"] = {k: recipe[k] for k in ("mau_sac", "vignette", "thanh_tien_do", "khung") if k in recipe}
+        return proj
 
     trans_cycle = ["vblur", "flash", "truot", "zoom", "glitch", "truot_ngang", "zoom", "mo"]
     tc = 0
@@ -265,7 +306,70 @@ def plan(folder: Path, template: str = "tin-nhanh", title: str | None = None, mu
         short = title if len(title) <= 28 else title[:26].rsplit(" ", 1)[0] + "…"
         P.add({"loai": "luoi", "media": P.take(8), "chu": short, "chuyen": "zoom"}, grid_beats)
     P.add({"loai": "ket", "media": P.take(1)[0], "chuyen": "mo"}, end_beats)
+    return _project(P, music, music_start, voice, srt, info, total, seconds)
 
+
+# số file media mỗi loại khối lấy mặc định (khóa `so` trong công thức đè lên)
+SO_MEDIA = {"nhay": 6, "rap_hinh": 1, "day_du": 1, "ket": 1, "luoi": 8, "chia": 3, "hinh_mo": 2,
+            "tuong_anh": 6, "flash": 6, "so_sanh": 2, "tieu_de": 0, "nghi_den": 0}
+# khóa nhận danh sách để xoay vòng mỗi lần khối lặp lại (các khóa khác giữ nguyên, ví dụ vao: [nhoe, punch])
+XOAY_VONG = {"kieu", "hinh", "font", "vi_tri", "zoom", "chuyen", "mau_nhan", "nen"}
+KHOA_CONG_THUC = {"so", "nhip", "nhip_co_chu", "tieu_de", "chu", "toi_drop", "dai_nhip"}
+
+
+def _plan_recipe(P: _Planner, rc: dict, title: str, texts: list):
+    """Dựng kịch bản từ một công thức trong kho_mau/: mo_dau (lần lượt) -> than (lặp vòng tới gần hết video,
+    khối có `chu: true` nhận lần lượt các dòng chữ) -> ket."""
+    beat = P.beats.period * P.mult
+    ket = rc.get("ket") or [{"loai": "nghi_den", "nhip": 1}, {"loai": "ket", "nhip": 4}]
+    end_space = beat * sum(int(b.get("nhip", 4)) for b in ket) + 0.2
+    ti = 0
+
+    def block(spec: dict, rep: int):
+        nonlocal ti
+        sc = {k: (v[rep % len(v)] if k in XOAY_VONG and isinstance(v, list) else v)
+              for k, v in spec.items() if k not in KHOA_CONG_THUC}
+        nb = int(spec.get("nhip", 4))
+        so = int(spec.get("so", SO_MEDIA.get(sc.get("loai"), 1)))
+        if so:
+            sc["media"] = P.take(min(so, len(P.media)))
+        if spec.get("tieu_de"):
+            sc["chu"] = title if sc.get("loai") != "luoi" or len(title) <= 28 \
+                else title[:26].rsplit(" ", 1)[0] + "…"
+        elif spec.get("chu") and ti < len(texts):
+            c = texts[ti]
+            ti += 1
+            tag = " ".join(x for x in (c.get("nhan"), c.get("chi_so")) if x)
+            sc["chu"] = c.get("chu") or tag
+            if c.get("chu") and tag:
+                sc["phu"] = tag
+            nb = int(spec.get("nhip_co_chu", nb))  # khối có chữ giữ lâu hơn cho kịp đọc
+        if spec.get("toi_drop") and P.music and P.beats.drop:
+            left = int(round((P.beats.drop - P.t()) / beat))
+            if 4 <= left <= 16:
+                nb = left  # khối kết thúc đúng lúc nhạc bùng lên
+        if "dai_nhip" in spec:
+            sc["dai_giay"] = round(beat * float(spec["dai_nhip"]), 2)
+        elif "dai_tu" in sc:
+            sc["dai_giay"] = round(beat * nb * 0.6, 2)
+        return sc, nb
+
+    for spec in rc.get("mo_dau") or []:
+        P.add(*block(spec, 0))
+    body = rc.get("than") or []
+    k = 0
+    while body and k < 400:
+        sc, nb = block(body[k % len(body)], k // len(body))
+        fit = int((P.remaining() - end_space) / beat)
+        if fit < 2:
+            break
+        P.add(sc, min(nb, fit))
+        k += 1
+    for spec in ket:
+        P.add(*block(spec, 0))
+
+
+def _project(P: _Planner, music, music_start, voice, srt, info, total, seconds) -> dict:
     proj = {
         "canh": P.scenes,
     }

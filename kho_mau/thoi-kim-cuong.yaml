@@ -1,0 +1,14 @@
+ten: Kim cương
+mo_ta: hình thoi, zigzag, kim cương; dồn cắt có rung; viền phim tông ấm
+mau_sac: am
+khung: phim
+nhac: [trap, drill]
+mo_dau:
+  - {loai: nghi_den, tieu_de: true, font: impact, nhip: 3}
+  - {loai: nhay, so: 8, vao: [rung, punch], toi_drop: true, nhip: 6}
+than:
+  - {loai: rap_hinh, kieu: [kim_cuong, zigzag, thoi_x], chu: true, nhip: 4, nhip_co_chu: 6}
+  - {loai: nhay, so: 6, vao: [rung, punch], nhip: 2}
+ket:
+  - {loai: nghi_den, nhip: 1}
+  - {loai: ket, nhip: 4}

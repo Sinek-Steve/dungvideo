@@ -6,8 +6,10 @@ Cách làm: spectral flux -> đường onset -> ước lượng tempo bằng t�
 """
 from __future__ import annotations
 
+import json
 import subprocess
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import numpy as np
 
@@ -25,6 +27,8 @@ class BeatInfo:
     duration: float
     drop: float | None = None
     strengths: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    onsets: np.ndarray = field(default_factory=lambda: np.zeros(0))          # thời điểm từng nốt nhạc (giây)
+    onset_strengths: np.ndarray = field(default_factory=lambda: np.zeros(0))  # độ mạnh của từng nốt
 
     @property
     def period(self) -> float:
@@ -140,6 +144,20 @@ def _track(env: np.ndarray, low: np.ndarray, bpm: float) -> np.ndarray:
     return np.array(out)
 
 
+def _peaks(env: np.ndarray, thr: float = 0.8, gap: float = 0.09):
+    """Đỉnh của đường onset = thời điểm từng nốt nhạc (dày hơn beat: bắt cả nốt giai điệu, hi-hat)."""
+    fps = SR / HOP
+    w = max(1, int(0.04 * fps))
+    idx, last = [], -1e9
+    for i in range(w, len(env) - w):
+        v = env[i]
+        if v >= thr and v == env[i - w:i + w + 1].max() and (i - last) / fps >= gap:
+            idx.append(i)
+            last = i
+    idx = np.array(idx, dtype=int)
+    return idx * HOP / SR + 0.03, env[idx] if len(idx) else np.zeros(0)
+
+
 _CACHE: dict = {}
 
 
@@ -179,7 +197,22 @@ def _detect(path: str, start: float, max_sec: float | None) -> BeatInfo:
             if 3.0 < t < dur * 0.7:
                 j = np.searchsorted(times, t)
                 drop = float(times[min(j, len(times) - 1)]) if len(times) else t
-    return BeatInfo(bpm=bpm, beats=times, duration=dur, drop=drop, strengths=strengths)
+    onsets, on_str = _peaks(env)
+    meta = Path(path).with_suffix(".json")  # nhạc tự tạo (lệnh tao-nhac) ghi sẵn tempo + drop chính xác
+    if meta.exists():
+        try:
+            m = json.loads(meta.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            m = {}
+        if m.get("bpm"):
+            bpm = float(m["bpm"])
+            p = 60 / bpm
+            times = np.arange((-start) % p, dur, p)
+            strengths = env[np.clip((times * SR / HOP).astype(int), 0, len(env) - 1)]
+            d = float(m.get("drop") or 0) - start
+            drop = d if d > 0.5 else None
+    return BeatInfo(bpm=bpm, beats=times, duration=dur, drop=drop, strengths=strengths,
+                    onsets=onsets, onset_strengths=on_str)
 
 
 def synthetic(duration: float, bpm: float = 120.0) -> BeatInfo:

@@ -1,0 +1,12 @@
+ten: Nhịp đôi
+mo_ta: dồn cắt dày nhất (mọi nốt), đủ 4 hiệu ứng vào cảnh, chia màn hình có chữ
+mau_sac: sang
+nhac: [edm, phonk]
+mo_dau:
+  - {loai: nhay, so: 10, nguong: 1.0, cat_toi_thieu: 0.1, vao: [punch, nhoe, rung, chop], tieu_de: true, nhip: 8}
+than:
+  - {loai: chia, kieu: [doc, cheo, thoi], chu: true, nhip: 4, nhip_co_chu: 6}
+  - {loai: nhay, so: 8, nguong: 1.0, cat_toi_thieu: 0.1, vao: [punch, nhoe, rung, chop], nhip: 4}
+ket:
+  - {loai: nghi_den, nhip: 1}
+  - {loai: ket, nhip: 4}

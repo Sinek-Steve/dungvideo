@@ -1,0 +1,11 @@
+ten: Tối giản
+mo_ta: nền đen, một hình mỗi khối, cắt sạch không hiệu ứng, màu tự nhiên
+mau_sac: tu_nhien
+nhac: [lofi, cinematic]
+mo_dau:
+  - {loai: nghi_den, tieu_de: true, nhip: 4}
+than:
+  - {loai: rap_hinh, kieu: [sao, tron_doc, kim_cuong, elip], chu: true, nhip: 5, nhip_co_chu: 7}
+  - {loai: nghi_den, nhip: 1}
+ket:
+  - {loai: ket, nhip: 4}

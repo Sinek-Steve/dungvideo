@@ -1,0 +1,13 @@
+ten: Vòng tròn
+mo_ta: họ hình tròn và elip, dồn cắt có punch, tông lạnh
+mau_sac: lanh
+nhac: [house, synthwave]
+mo_dau:
+  - {loai: nhay, so: 6, nguong: 2.0, vao: [punch], nhip: 4}
+  - {loai: rap_hinh, kieu: tron_hang, tieu_de: true, nhip: 6}
+than:
+  - {loai: rap_hinh, kieu: [tron_cheo, elip, tron_doc, tron_hang], chu: true, nhip: 4, nhip_co_chu: 6}
+  - {loai: nhay, so: 5, vao: [punch, nhoe], nhip: 2}
+ket:
+  - {loai: nghi_den, nhip: 1}
+  - {loai: ket, nhip: 4}

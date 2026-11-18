@@ -1,0 +1,13 @@
+ten: Phim cũ
+mo_ta: viền phim, cảnh trôi chậm có chú thích, chuyển nhòe dọc, kết bằng lưới 3x3
+mau_sac: am
+khung: phim
+nhac: [lofi, cinematic]
+mo_dau:
+  - {loai: hinh_mo, hinh: tron, tieu_de: true, nhip: 6}
+than:
+  - {loai: day_du, nhun: false, zoom: [vao, ra], chuyen: [vblur, mo], chu: true, nhip: 6, nhip_co_chu: 8}
+  - {loai: flash, so: 5, moi: nua_nhip, chuyen: vblur, nhip: 2}
+ket:
+  - {loai: luoi, tieu_de: true, chuyen: zoom, nhip: 8}
+  - {loai: ket, chuyen: mo, nhip: 4}

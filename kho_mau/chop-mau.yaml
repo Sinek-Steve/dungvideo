@@ -1,0 +1,13 @@
+ten: Chớp màu
+mo_ta: dồn cắt chớp sáng, tấm màu cam/vàng sau lục giác và dấu cộng
+mau_sac: sang
+nhac: [edm, future_bass]
+mo_dau:
+  - {loai: tieu_de, tieu_de: true, nen: vang, nhip: 4}
+  - {loai: nhay, so: 8, vao: [chop, punch], toi_drop: true, nhip: 6}
+than:
+  - {loai: rap_hinh, kieu: [luc_giac, cong], mau_nhan: [cam, vang], chu: true, nhip: 4, nhip_co_chu: 6}
+  - {loai: nhay, so: 6, vao: [chop, punch, nhoe], nhip: 2}
+ket:
+  - {loai: nghi_den, nhip: 1}
+  - {loai: ket, nhip: 4}

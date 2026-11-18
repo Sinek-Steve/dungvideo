@@ -1,0 +1,12 @@
+ten: Chậm lofi
+mo_ta: nhịp chậm, cảnh trôi dài có chú thích, lộ cảnh tròn, tông ấm
+mau_sac: am
+nhac: [lofi]
+do_dai: 35
+mo_dau:
+  - {loai: tieu_de, tieu_de: true, nen: media, so: 1, nhip: 6}
+than:
+  - {loai: day_du, nhun: false, zoom: [vao, ra], chuyen: mo, chu: true, nhip: 8, nhip_co_chu: 10}
+  - {loai: hinh_mo, hinh: [tron, thoi], nhip: 4}
+ket:
+  - {loai: ket, chuyen: mo, nhip: 6}

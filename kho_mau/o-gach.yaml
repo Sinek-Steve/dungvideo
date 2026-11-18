@@ -1,0 +1,12 @@
+ten: Ô gạch
+mo_ta: ô vuông, lưới ô và tường ảnh đổi hình theo phách, tông sáng
+mau_sac: sang
+nhac: [house, edm]
+mo_dau:
+  - {loai: tuong_anh, so: 6, tieu_de: true, nhip: 6}
+than:
+  - {loai: rap_hinh, kieu: [luoi_o, o_vuong], chu: true, nhip: 4, nhip_co_chu: 6}
+  - {loai: tuong_anh, so: 12, cot: 3, hang: 4, doi: nua_nhip, nhip: 2}
+ket:
+  - {loai: nghi_den, nhip: 1}
+  - {loai: ket, nhip: 4}

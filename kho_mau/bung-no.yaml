@@ -1,0 +1,14 @@
+ten: Bùng nổ
+mo_ta: "mạnh nhất: dồn cắt đủ hiệu ứng, tường ảnh nửa nhịp, chớp, ráp hình liên tục"
+mau_sac: sang
+nhac: [edm, phonk, drill]
+mo_dau:
+  - {loai: nhay, so: 10, nguong: 1.2, vao: [punch, chop, rung, nhoe], nhip: 4}
+  - {loai: rap_hinh, kieu: cong, tieu_de: true, mau_nhan: cam, nhip: 4}
+than:
+  - {loai: rap_hinh, kieu: [zigzag, x, luoi_o, tron_cheo, luc_giac], chu: true, nhip: 3, nhip_co_chu: 5}
+  - {loai: tuong_anh, so: 12, cot: 3, hang: 4, doi: nua_nhip, nhip: 2}
+  - {loai: nhay, so: 6, nguong: 1.2, vao: [punch, chop, rung, nhoe], nhip: 2}
+ket:
+  - {loai: nghi_den, nhip: 1}
+  - {loai: ket, nhip: 4}

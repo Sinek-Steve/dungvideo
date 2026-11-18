@@ -1,0 +1,15 @@
+ten: Màn hình giao dịch
+mo_ta: khung ống ngắm REC, tường ảnh 3x4 nửa nhịp, dồn cắt rung, tông lạnh
+mau_sac: lanh
+khung: hud
+nhac: [techno, drill]
+mo_dau:
+  - {loai: nhay, so: 8, vao: [rung], nguong: 2.0, nhip: 4}
+  - {loai: nghi_den, tieu_de: true, font: impact, nhip: 3}
+than:
+  - {loai: tuong_anh, so: 12, cot: 3, hang: 4, doi: nua_nhip, chu: true, nhip: 4, nhip_co_chu: 6}
+  - {loai: nhay, so: 6, vao: [rung, punch], nhip: 2}
+  - {loai: rap_hinh, kieu: [luoi_o, o_vuong, zigzag], nhip: 3}
+ket:
+  - {loai: nghi_den, nhip: 1}
+  - {loai: ket, nhip: 4}

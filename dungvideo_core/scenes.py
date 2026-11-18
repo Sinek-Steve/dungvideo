@@ -9,6 +9,10 @@ Loại cảnh (khóa `loai` trong file dự án):
   flash     : trình chiếu chớp nhanh (mỗi ảnh ~0,3s, mờ dần vào + zoom ra)
   so_sanh   : so sánh 2–3 ảnh/biểu đồ chồng dọc, có nhãn mã & % tăng giảm
   ket       : màn kết: handle, lời kêu gọi theo dõi, nút nhấp nháy theo beat
+  nhay      : dồn cắt theo từng nốt nhạc (mỗi nốt 1 clip, cắt thẳng, không nhún), có thể kèm dải ngang mở dần
+  rap_hinh  : ráp hình: cùng một clip lộ ra qua các mảnh mask nở lần lượt theo nốt nhạc rồi ráp kín khung
+  tuong_anh : tường ảnh: lưới ô mỗi ô một clip, cả lưới cùng đổi hình theo nhịp
+  nghi_den  : khoảng nghỉ màn hình đen (có thể kèm chữ)
 """
 from __future__ import annotations
 
@@ -17,6 +21,7 @@ import random
 
 import numpy as np
 
+from . import fx as FX
 from .comp import blend, blend_rgba, blend_solid, blur_dark, to_uint8, vertical_gradient, zoom_frame
 from .masks import rotated_bbox, shape_alpha
 from .textfx import chip_parts_rgba, chip_rgba, fit_font, font, nfc, scale_rgba, text_rgba, text_size
@@ -176,6 +181,10 @@ class Scene:
 
     def draw(self, t: float) -> np.ndarray:  # pragma: no cover
         raise NotImplementedError
+
+    def sfx(self) -> list:
+        """Tiếng động của cảnh: [(giây trong cảnh, tên file trong tieng_dong/, âm lượng)]."""
+        return []
 
     def punch(self, t: float, amp: float = 0.055, decay: float = 0.13) -> float:
         if not self.ctx.music_beats or not self.lbeats:
@@ -733,5 +742,377 @@ class EndScene(Scene):
         return canvas
 
 
+# ------------------------------------------------------------------ nhay
+class MontageScene(Scene):
+    """Dồn cắt kiểu reel CapCut: mỗi nốt nhạc là một clip khác, cắt thẳng, không nhún, không chuyển cảnh.
+    Clip video lấy một đoạn ngẫu nhiên khác nhau mỗi lần dùng nên hình luôn đang chuyển động.
+    Khóa: media [list], cat (not|nua_nhip|nhip|số giây), nguong (độ mạnh nốt tối thiểu, mặc định 1.5),
+    cat_toi_thieu (giây, mặc định 0.12), dai_tu / dai_den / dai_giay (dải ngang mở dần: tỉ lệ chiều cao 0..1),
+    vao (hiệu ứng ở các cú cắt trúng phách, lần lượt: punch | rung | nhoe | chop), chu, phu, font, vi_tri."""
+    kind = "nhay"
+
+    def __init__(self, cfg, ctx, start, dur):
+        super().__init__(cfg, ctx, start, dur)
+        self.cuts = self._cuts(cfg.get("cat", "not"))
+        vao = cfg.get("vao") or []
+        vao = [vao] if isinstance(vao, str) else list(vao)
+        self.fx, j = [], 0
+        for c in self.cuts:
+            on_beat = any(abs(c - b) < 0.05 for b in self.lbeats)
+            self.fx.append(vao[j % len(vao)] if vao and on_beat else None)
+            j += bool(vao and on_beat)
+        rnd = random.Random(self.seed)
+        self.shots = []  # (media, giây bắt đầu trong clip)
+        for k, c in enumerate(self.cuts):
+            m = self.media(k)
+            off = 0.0
+            if m is not None and m.kind == "video" and len(self.medias) > 1:
+                nxt = self.cuts[k + 1] if k + 1 < len(self.cuts) else dur
+                span = m.duration - m.start - (nxt - c) - 0.1
+                off = rnd.uniform(0, span) if span > 0 else 0.0
+            self.shots.append((m, off))
+        self._active = None
+
+    def _cuts(self, mode):
+        if len(self.medias) <= 1:
+            return [0.0]
+        ctx, cfg = self.ctx, self.cfg
+        b = ctx.beats
+        beats = list(b.beats) if ctx.music_beats else []
+        if mode == "not" and ctx.music_beats:
+            thr = float(cfg.get("nguong", 1.5))
+            pts = [float(x) for x, s in zip(b.onsets, b.onset_strengths) if s >= thr] + beats
+        elif mode == "nua_nhip" and beats:
+            pts = beats + [(x + y) / 2 for x, y in zip(beats[:-1], beats[1:])]
+        elif mode in ("nhip", "not") and beats:
+            pts = beats
+        else:
+            step = max(float(mode) if not isinstance(mode, str) else 0.3, 0.08)
+            pts = list(self.start + np.arange(0, self.dur, step))
+        gap = float(cfg.get("cat_toi_thieu", 0.12))
+        out = [0.0]
+        for x in sorted(p - self.start for p in pts):
+            if gap <= x < self.dur - gap and x - out[-1] >= gap:
+                out.append(x)
+        return out
+
+    def sfx(self):
+        sound = {"nhoe": "whoosh_ngan", "punch": "hit", "rung": "glitch", "chop": "tick"}
+        out = [(c, sound[f], 0.55) for c, f in zip(self.cuts, self.fx) if f in sound]
+        if float(self.cfg.get("dai_tu", 1.0)) < 0.05 < float(self.cfg.get("dai_den", 0)):
+            out.append((0.0, "whoosh", 0.6))  # vạch ngang mở ra
+        return out
+
+    def _band(self, t):
+        a = float(self.cfg.get("dai_tu", 1.0))
+        z = float(self.cfg.get("dai_den", a))
+        d = float(self.cfg.get("dai_giay", self.dur))
+        return lerp(a, z, ease("out_cubic", t / max(d, 1e-3)))
+
+    def draw(self, t):
+        ctx = self.ctx
+        W, H = ctx.W, ctx.H
+        k = max(0, int(np.searchsorted(self.cuts, t + 1e-6)) - 1)
+        m, off = self.shots[k]
+        if self._active is not None and self._active is not m:
+            self._active.close()  # giải phóng tiến trình giải mã clip vừa dùng xong
+        self._active = m
+        t_in = t - self.cuts[k]
+        if m is None:
+            canvas = np.zeros((H, W, 3), np.float32)
+        else:
+            z, cx, cy = FX.camera(self.fx[k], t_in, k)
+            if m.kind == "image":
+                z *= lerp(1.0, 1.06, t / max(self.dur, 1e-3))  # ảnh tĩnh trôi nhẹ
+            canvas = m.frame(off + t_in, W, H, zoom=z, cx=cx, cy=cy).astype(np.float32)
+            canvas = FX.post(self.fx[k], canvas, t_in)
+        band = self._band(t)
+        if band < 0.999:
+            h = max(2, int(round(H * max(band, 0.0))))
+            y0 = (H - h) // 2
+            canvas[:y0] = 0
+            canvas[y0 + h:] = 0
+        draw_center_title(canvas, ctx, self.cfg.get("chu"), t, self.cfg.get("vi_tri", "giua"),
+                          self.cfg.get("font", "title"), sub=self.cfg.get("phu"))
+        return canvas
+
+
+# ------------------------------------------------------------------ rap_hinh
+# Học từ reel @rasooliarts: mỗi khối là CÙNG một clip lộ ra qua các mảnh mask xuất hiện lần lượt theo nốt nhạc:
+# hạt giống (chấm / sao / lục giác...) -> thêm hình -> các dải bay vào ráp kín khung (để lại khe mảnh).
+# Mảnh: (hình, x, y, rộng, cao[, "mau"]) - x, y theo tỉ lệ khung; rộng, cao theo tỉ lệ chiều RỘNG khung
+# (khung dọc 9:16 cao = 1,78 lần rộng). "mau" = tấm màu đặc thay cho hình. Phần tử cuối = dải ráp kín
+# "doc:N" | "ngang:N" | "cheo:N[:góc]".
+RAP_KIEU = {
+    "tron_cheo": [[("circle", 0.5, 0.5, 0.3, 0.3)],
+                  [("circle", 0.25, 0.2, 0.4, 0.4), ("circle", 0.75, 0.8, 0.4, 0.4)],
+                  [("circle", 0.4, 0.38, 0.4, 0.4), ("circle", 0.6, 0.62, 0.4, 0.4)],
+                  "cheo:5"],
+    "tron_doc": [[("circle", 0.5, 0.5, 0.32, 0.32)],
+                 [("circle", 0.5, 0.18, 0.42, 0.42), ("circle", 0.5, 0.82, 0.42, 0.42)],
+                 [("circle", 0.5, 0.34, 0.42, 0.42), ("circle", 0.5, 0.66, 0.42, 0.42)],
+                 "doc:4"],
+    "thoi_x": [[("diamond", 0.5, 0.5, 0.12, 0.12)],
+               [("diamond", 0.22, 0.2, 0.46, 0.46), ("diamond", 0.78, 0.2, 0.46, 0.46),
+                ("diamond", 0.22, 0.8, 0.46, 0.46), ("diamond", 0.78, 0.8, 0.46, 0.46)],
+               [("diamond", 0.5, 0.5, 0.66, 0.66)],
+               "ngang:4"],
+    "x": [[("cross", 0.5, 0.5, 0.45, 0.45)],
+          [("cross", 0.5, 0.5, 1.2, 1.2)],
+          "cheo:4:45"],
+    "sao": [[("star", 0.5, 0.5, 0.2, 0.2)],
+            [("star", 0.5, 0.5, 0.64, 0.64)],
+            [("rect", 0.17, 0.5, 0.34, 1.78), ("rect", 0.83, 0.5, 0.34, 1.78)],
+            "doc:3"],
+    "luc_giac": [[("hexagon", 0.5, 0.5, 0.34, 0.34, "mau")],
+                 [("hexagon", 0.5, 0.5, 0.56, 0.56)],
+                 [("rect", 0.5, 0.18, 1.0, 0.64, "mau")],
+                 "ngang:3"],
+    "o_vuong": [[("rect", 0.5, 0.86, 1.0, 0.5)],
+                [("rect", 0.25, 0.17, 0.5, 0.6)],
+                [("rect", 0.75, 0.17, 0.5, 0.6)],
+                "ngang:3"],
+    "tron_hang": [[("circle", 0.5, 0.5, 0.2, 0.2)],
+                  [("circle", 0.14, 0.5, 0.24, 0.24), ("circle", 0.38, 0.5, 0.24, 0.24),
+                   ("circle", 0.62, 0.5, 0.24, 0.24), ("circle", 0.86, 0.5, 0.24, 0.24)],
+                  [("circle", 0.27, 0.5, 0.56, 0.56), ("circle", 0.73, 0.5, 0.56, 0.56)],
+                  "doc:4"],
+    "zigzag": [[("diamond", 0.5, 0.5, 0.14, 0.14)],
+               [("diamond", x, 0.5, 0.26, 0.26) for x in (0.1, 0.3, 0.5, 0.7, 0.9)],
+               [("diamond", x, y, 0.3, 0.3) for y in (0.36, 0.64) for x in (0.2, 0.5, 0.8)],
+               "cheo:4:30"],
+    "kim_cuong": [[("diamond", 0.5, 0.5, 0.3, 0.3)],
+                  [("diamond", 0.5, 0.5, 0.95, 0.95)],
+                  [("diamond", x, y, 0.95, 0.95) for x in (0.0, 1.0) for y in (0.0, 1.0)],
+                  "ngang:3"],
+    "luoi_o": [[("rect", 0.5, 0.375, 0.333, 0.444)],
+               [("rect", 0.17, 0.125, 0.333, 0.444), ("rect", 0.83, 0.625, 0.333, 0.444),
+                ("rect", 0.17, 0.875, 0.333, 0.444)],
+               [("rect", 0.83, 0.125, 0.333, 0.444), ("rect", 0.17, 0.5, 0.333, 0.444),
+                ("rect", 0.5, 0.875, 0.333, 0.444)],
+               "doc:3"],
+    "tam_giac": [[("tri_up", 0.5, 0.5, 0.24, 0.21)],
+                 [("tri_up", 0.25, 0.3, 0.5, 0.43), ("tri_down", 0.75, 0.3, 0.5, 0.43)],
+                 [("tri_down", 0.25, 0.7, 0.5, 0.43), ("tri_up", 0.75, 0.7, 0.5, 0.43)],
+                 "cheo:4:60"],
+    "elip": [[("ellipse", 0.5, 0.5, 0.36, 0.14)],
+             [("ellipse", 0.5, 0.28, 0.9, 0.34), ("ellipse", 0.5, 0.72, 0.9, 0.34)],
+             [("ellipse", 0.5, 0.5, 1.1, 0.6)],
+             "ngang:3"],
+    "cong": [[("plus", 0.5, 0.5, 0.3, 0.3)],
+             [("plus", 0.5, 0.5, 0.9, 0.9)],
+             [("plus", 0.5, 0.5, 1.6, 1.6, "mau")],
+             "doc:4"],
+}
+# tam giác = đa giác lồi (toạ độ theo tỉ lệ kích thước hình, quanh tâm)
+TRI_PTS = {"tri_up": ((-0.5, 0.5), (0.5, 0.5), (0.0, -0.5)), "tri_down": ((-0.5, -0.5), (0.5, -0.5), (0.0, 0.5))}
+
+
+def _crop_pad(arr, x, y, w, h):
+    """Cắt vùng (x, y, w, h) của ảnh; phần nằm ngoài ảnh là màu đen."""
+    H, W = arr.shape[:2]
+    out = np.zeros((h, w, 3), np.float32)
+    x0, y0, x1, y1 = max(x, 0), max(y, 0), min(x + w, W), min(y + h, H)
+    if x1 > x0 and y1 > y0:
+        out[y0 - y:y1 - y, x0 - x:x1 - x] = arr[y0:y1, x0:x1]
+    return out
+
+
+class AssembleScene(Scene):
+    """Ráp hình: cùng một clip lộ ra qua các mảnh mask nở / bay vào lần lượt trúng nốt nhạc rồi ráp kín khung.
+    Khóa: media (1 clip/ảnh), kieu (xem RAP_KIEU: tron_cheo, tron_doc, tron_hang, thoi_x, zigzag, kim_cuong,
+    x, sao, luc_giac, o_vuong, luoi_o, tam_giac, elip, cong),
+    nguong (độ mạnh nốt), mau_nhan (màu tấm màu), khe (px khe giữa các dải), chu, phu, font."""
+    kind = "rap_hinh"
+
+    def __init__(self, cfg, ctx, start, dur):
+        super().__init__(cfg, ctx, start, dur)
+        W, H = ctx.W, ctx.H
+        spec = RAP_KIEU.get(cfg.get("kieu", "tron_cheo"), RAP_KIEU["tron_cheo"])
+        groups, fill = spec[:-1], spec[-1]
+        times = self._times(len(groups) + 1)
+        self.pieces = []
+        for gi, g in enumerate(groups):
+            for j, it in enumerate(g):
+                kind, x, y, w, h = it[:5]
+                self.pieces.append((times[gi] + 0.06 * j, kind, x * W, y * H, w * W, h * W, len(it) > 5))
+        self.times = times
+        self.t_fill = times[-1]
+        self.t_text = times[1] if len(times) > 2 else times[-1]
+        self.strips = self._strips(fill, float(cfg.get("khe", 6)) * ctx.s)
+        self.acc = np.array(color(cfg.get("mau_nhan"), YELLOW), np.float32)
+
+    def sfx(self):
+        # pop rõ ở hạt giống đầu khối, các nhóm sau nhỏ hơn để không thành tiếng lách cách liên tục
+        return ([(self.times[0], "pop", 0.5)] + [(t, "pop", 0.2) for t in self.times[1:-1]]
+                + [(self.t_fill, "whoosh", 0.55)])
+
+    def _times(self, n):
+        """Thời điểm xuất hiện của từng nhóm mảnh: rải đều trên ~62% khối, mỗi mốc bám nốt nhạc gần nhất."""
+        ctx = self.ctx
+        ev = []
+        if ctx.music_beats:
+            thr = float(self.cfg.get("nguong", 1.5))
+            b = ctx.beats
+            ev = sorted(float(x) - self.start for x, s in
+                        zip(list(b.onsets) + list(b.beats), list(b.onset_strengths) + [9.0] * len(b.beats))
+                        if s >= thr)
+        out = [0.0]
+        for tgt in np.linspace(0, self.dur * 0.62, n)[1:]:
+            near = [x for x in ev if x >= out[-1] + 0.15 and abs(x - tgt) <= 0.25]
+            out.append(min(near, key=lambda x: abs(x - tgt)) if near else max(float(tgt), out[-1] + 0.15))
+        return out
+
+    def _strips(self, spec, gap):
+        W, H = self.ctx.W, self.ctx.H
+        parts = str(spec).split(":")
+        kind, n = parts[0], int(parts[1]) if len(parts) > 1 else 4
+        phi = {"doc": 0.0, "ngang": 90.0}.get(kind, float(parts[2]) if len(parts) > 2 else 20.0)
+        a = math.radians(phi)
+        ys, xs = np.mgrid[0:H, 0:W].astype(np.float32)
+        u = xs * math.cos(a) + ys * math.sin(a)
+        lo, hi = float(u.min()), float(u.max())
+        edges = np.linspace(lo, hi, n + 1)
+        dirx, diry = -math.sin(a), math.cos(a)  # dải bay vào dọc theo chiều dài của nó
+        out = []
+        for i in range(n):
+            d = np.minimum(u - edges[i] - (gap / 2 if i else -9), edges[i + 1] - u - (gap / 2 if i < n - 1 else -9))
+            al = np.clip(d + 0.5, 0, 1).astype(np.float32)
+            rows, cols = np.where(al.any(1))[0], np.where(al.any(0))[0]
+            if not len(rows) or not len(cols):
+                continue
+            y0, y1, x0, x1 = rows[0], rows[-1] + 1, cols[0], cols[-1] + 1
+            sgn = 1 if i % 2 else -1
+            out.append((al[y0:y1, x0:x1], int(x0), int(y0), dirx * sgn, diry * sgn))
+        return out
+
+    def draw(self, t):
+        ctx = self.ctx
+        W, H = ctx.W, ctx.H
+        m = self.media(0)
+        F = (m.frame(t, W, H, zoom=lerp(1.0, 1.08, t / max(self.dur, 1e-3))).astype(np.float32)
+             if m is not None else ctx.bg())
+        canvas = np.zeros((H, W, 3), np.float32)
+        for t0, kind, cx, cy, w, h, plate in self.pieces:
+            if t < t0:
+                continue
+            q = (t - t0) / 0.3
+            dx = dy = 0
+            if kind == "rect":  # tấm chữ nhật trượt vào từ mép gần nhất
+                s = 1.0
+                off = (1 - ease("out_cubic", q)) * max(W, H)
+                if abs(cx - W / 2) > abs(cy - H / 2) * W / H:
+                    dx = int(off * (1 if cx > W / 2 else -1))
+                else:
+                    dy = int(off * (1 if cy > H / 2 else -1))
+            else:  # hình nở ra
+                s = max(ease("out_back", q), 0.02)
+            sw, sh = w * s, h * s
+            bw, bh = int(math.ceil(sw)) + 2, int(math.ceil(sh)) + 2
+            x, y = int(round(cx - bw / 2)), int(round(cy - bh / 2))
+            alpha = ctx.mcache.get((kind, bw, bh, round(sw, 1), round(sh, 1)),
+                                   lambda: shape_alpha("polygon", bw, bh, sw, sh, pts=TRI_PTS[kind])
+                                   if kind in TRI_PTS else shape_alpha(kind, bw, bh, sw, sh))
+            if plate:
+                blend_solid(canvas, self.acc, alpha, x + dx, y + dy)
+                continue
+            content = _crop_pad(F, x, y, bw, bh)
+            if kind != "rect" and q < 0.5:  # nhoè lúc nở
+                content = FX.directional_blur(content, bh * 0.35 * (1 - q / 0.5), 90)
+            blend(canvas, content, alpha, x + dx, y + dy)
+        dist = max(W, H)
+        for i, (al, x0, y0, ux, uy) in enumerate(self.strips):
+            ti = self.t_fill + 0.06 * i
+            if t < ti:
+                continue
+            off = (1 - ease("out_cubic", (t - ti) / 0.3)) * dist
+            h, w = al.shape
+            blend(canvas, F[y0:y0 + h, x0:x0 + w], al, x0 + int(ux * off), y0 + int(uy * off))
+        draw_center_title(canvas, ctx, self.cfg.get("chu"), t, self.cfg.get("vi_tri", "giua"),
+                          self.cfg.get("font", "title"), appear=self.t_text, sub=self.cfg.get("phu"))
+        return canvas
+
+
+# ------------------------------------------------------------------ tuong_anh
+class WallScene(Scene):
+    """Tường ảnh: lưới ô, mỗi ô một clip khác nhau; cả lưới cùng đổi hình theo nhịp.
+    Khóa: media [list], cot (mặc định 2), hang (3), khe (px, 8), doi (nhip | nua_nhip | số giây), chu, phu."""
+    kind = "tuong_anh"
+
+    def __init__(self, cfg, ctx, start, dur):
+        super().__init__(cfg, ctx, start, dur)
+        self.cols, self.rows = max(1, int(cfg.get("cot", 2))), max(1, int(cfg.get("hang", 3)))
+        doi = cfg.get("doi", "nhip")
+        pts = []
+        if doi in ("nhip", "nua_nhip") and self.lbeats:
+            pts = list(self.lbeats)
+            if doi == "nua_nhip":
+                pts += [(a + b) / 2 for a, b in zip(self.lbeats[:-1], self.lbeats[1:])]
+        else:
+            step = max(float(doi) if not isinstance(doi, str) else 0.5, 0.15)
+            pts = list(np.arange(0, dur, step))
+        self.slots = [0.0] + sorted(p for p in set(round(x, 4) for x in pts) if 0.15 < p < dur - 0.1)
+        rnd = random.Random(self.seed)
+        ncell = self.cols * self.rows
+        self.plan = []
+        for k, s0 in enumerate(self.slots):
+            s1 = self.slots[k + 1] if k + 1 < len(self.slots) else dur
+            row = []
+            for c in range(ncell):
+                m = self.media(k * ncell + c)
+                span = (m.duration - m.start - (s1 - s0) - 0.1) if m is not None and m.kind == "video" else 0
+                row.append((m, rnd.uniform(0, span) if span > 0 else 0.0))
+            self.plan.append(row)
+        self._active = set()
+
+    def sfx(self):
+        return [(0.0, "whoosh_ngan", 0.5)] + [(s, "tick", 0.4) for s in self.slots[1:]]
+
+    def draw(self, t):
+        ctx = self.ctx
+        W, H = ctx.W, ctx.H
+        g = float(self.cfg.get("khe", 8)) * ctx.s
+        cw = int((W - g * (self.cols + 1)) / self.cols)
+        ch = int((H - g * (self.rows + 1)) / self.rows)
+        k = max(0, int(np.searchsorted(self.slots, t + 1e-6)) - 1)
+        t_in = t - self.slots[k]
+        canvas = np.zeros((H, W, 3), np.float32)
+        active = set()
+        for c, (m, off) in enumerate(self.plan[k]):
+            if m is None:
+                continue
+            p = 1.0 if k else ease("out_cubic", (t - 0.05 * c) / 0.25)  # lần đầu: các ô lộ ra lần lượt từ tâm
+            if p <= 0.01:
+                continue
+            active.add(id(m))
+            fr = m.frame(off + t_in, cw, ch).astype(np.float32)
+            w, h = max(2, int(cw * p)), max(2, int(ch * p))
+            x0, y0 = (cw - w) // 2, (ch - h) // 2
+            col, row = c % self.cols, c // self.cols
+            x = int(g + col * (cw + g)) + x0
+            y = int(g + row * (ch + g)) + y0
+            blend(canvas, fr[y0:y0 + h, x0:x0 + w], None, x, y)
+        for m in {id(m): m for row in self.plan for m, _ in row if m is not None}.values():
+            if id(m) in self._active and id(m) not in active:
+                m.close()  # giải phóng clip vừa rời khỏi lưới
+        self._active = active
+        if k and t_in < 0.06:
+            canvas += 45.0 * (1 - t_in / 0.06)  # chớp nhẹ lúc cả lưới đổi hình
+        draw_center_title(canvas, ctx, self.cfg.get("chu"), t, self.cfg.get("vi_tri", "giua"),
+                          self.cfg.get("font", "title"), sub=self.cfg.get("phu"))
+        return canvas
+
+
+# ------------------------------------------------------------------ nghi_den
+class BlackScene(Scene):
+    kind = "nghi_den"
+
+    def draw(self, t):
+        canvas = np.zeros((self.ctx.H, self.ctx.W, 3), np.float32)
+        draw_center_title(canvas, self.ctx, self.cfg.get("chu"), t, self.cfg.get("vi_tri", "giua"),
+                          self.cfg.get("font", "title"), sub=self.cfg.get("phu"))
+        return canvas
+
+
 SCENES = {c.kind: c for c in (FullScene, SplitScene, GridScene, RevealScene, TitleScene, FlashScene,
-                              CompareScene, EndScene)}
+                              CompareScene, EndScene, MontageScene, AssembleScene, WallScene, BlackScene)}

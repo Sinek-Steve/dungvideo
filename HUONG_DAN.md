@@ -67,7 +67,41 @@ Gõ `python dungvideo.py hieu-ung` để xem đủ danh sách cảnh và khóa.
 khung thương hiệu (`toi_gian`, `phim` hoặc `hud`), các nhãn trên cùng và handle. Nếu chữ TikTok che dòng handle phía dưới
 thì giảm `vi_tri_duoi` (ví dụ 0.82).
 
-## 7. Dòng lệnh (cho pipeline tự động)
+## 7. Kho mẫu riêng (`kho_mau/`)
+Mỗi file `.yaml` trong `kho_mau/` là một mẫu dựng. Có sẵn 22 mẫu, ví dụ `nhip-nhanh`, `rap-hinh-lien`, `chop-mau`,
+`tuong-anh`, `dai-dien-anh`, `bung-no`, `cham-lofi`. Gõ `python dungvideo.py hieu-ung` để xem tên và mô tả từng mẫu.
+
+```
+python dungvideo.py auto "D:\video\tin_18_11" --mau chop-mau
+python dungvideo.py auto "D:\video\tin_18_11" --mau ngau_nhien     # bốc thăm một mẫu trong kho
+```
+Muốn có mẫu mới: chép một file trong `kho_mau/`, đổi tên, sửa vài dòng (đầu mỗi file có ghi chú từng khóa).
+Mỗi mẫu gồm `mo_dau` (các khối mở đầu), `than` (các khối lặp vòng tới gần hết video) và `ket`, cộng màu, khung
+và phong cách nhạc ưa dùng. Với mẫu trong kho, các dòng trong `chu.txt` (trừ dòng tiêu đề) được dùng lần lượt cho
+các khối có chữ. Lưu ý: dòng bắt đầu bằng `#` là ghi chú; dòng bắt đầu bằng số + dấu hai chấm (như `9:15`) là chú
+thích gắn vào file số đó.
+
+Hiệu ứng có trong các mẫu:
+- **rap_hinh** (ráp hình): cùng một clip lộ ra qua các mảnh nở lần lượt đúng nốt nhạc rồi ráp kín khung. 14 kiểu:
+  `tron_cheo, tron_doc, tron_hang, thoi_x, zigzag, kim_cuong, x, sao, luc_giac, o_vuong, luoi_o, tam_giac, elip, cong`.
+- **nhay** (dồn cắt): mỗi nốt nhạc một clip, cắt thẳng. Có hiệu ứng vào cảnh ở cú cắt trúng phách:
+  `punch` (phóng rồi thu), `rung`, `nhoe` (nhoè dọc), `chop` (chớp sáng). Có thể kèm dải ngang mở dần.
+- **tuong_anh** (tường ảnh): lưới ô, mỗi ô một clip, cả lưới cùng đổi hình theo nhịp.
+- **nghi_den**: khoảng nghỉ màn hình đen.
+
+## 8. Nhạc và tiếng động tự tạo (không bản quyền)
+```
+python dungvideo.py tao-nhac              # 33 bài (11 phong cách x 3) vào nhac/, tiếng động vào tieng_dong/
+python dungvideo.py tao-nhac --so 5 --kieu trap lofi
+```
+Phong cách: trap, drill, phonk, house, techno, edm, future_bass, synthwave, lofi, hiphop, cinematic. Mỗi bài dài
+35-50 giây, nhạc bùng lên (drop) ở khoảng giây 5-9. Thư mục nào **không có file nhạc** thì tool tự lấy một bài
+trong `nhac/` đúng phong cách mẫu đang dùng. Muốn bài cụ thể thì chép file nhạc vào thư mục hoặc dùng `--nhac`.
+
+Lúc dựng, tool tự chèn tiếng động vào điểm cắt: "pop" khi mảnh hình nở, "whoosh" khi dải bay vào, "hit" khi punch.
+Tắt bằng `tieng_dong: false` trong file dự án; chỉnh to nhỏ bằng `am_luong_tieng_dong: 0.45`.
+
+## 9. Dòng lệnh (cho pipeline tự động)
 ```
 python dungvideo.py auto "D:\video\tin_18_11" --mau tin-nhanh --tieu-de "..." --nhap
 python dungvideo.py auto THU_MUC --nhac nhac.mp3 --nhac-bat-dau 30 --giay 25

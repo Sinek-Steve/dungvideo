@@ -1,0 +1,14 @@
+ten: Tin nóng
+mo_ta: thẻ tiêu đề nền đỏ, cảnh có chú thích (không nhún), xen dồn cắt và ô vuông
+mau_sac: dien_anh
+nhac: [hiphop, trap]
+mo_dau:
+  - {loai: tieu_de, tieu_de: true, nen: do, nhip: 4}
+  - {loai: nhay, so: 6, vao: [punch], nhip: 4}
+than:
+  - {loai: day_du, nhun: false, zoom: [vao, ra], chuyen: [vblur, zoom], vi_tri: duoi, chu: true, nhip: 4, nhip_co_chu: 6}
+  - {loai: nhay, so: 4, vao: [punch, nhoe], nhip: 2}
+  - {loai: rap_hinh, kieu: [o_vuong, luoi_o], nhip: 3}
+ket:
+  - {loai: nghi_den, nhip: 1}
+  - {loai: ket, nhip: 4}

@@ -1,0 +1,12 @@
+ten: Chia màn hình
+mo_ta: chia màn bằng mask (dải dọc, chéo, tròn, thoi, viên, thẻ) xen dồn cắt
+mau_sac: dien_anh
+nhac: [hiphop, house]
+mo_dau:
+  - {loai: chia, kieu: cheo, so: 3, tieu_de: true, font: impact, nhip: 6}
+than:
+  - {loai: chia, kieu: [doc, tron, vien, the, thoi, ngang], chu: true, nhip: 4, nhip_co_chu: 6}
+  - {loai: nhay, so: 5, vao: [punch], nhip: 2}
+ket:
+  - {loai: nghi_den, nhip: 1}
+  - {loai: ket, nhip: 4}

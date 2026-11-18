@@ -25,6 +25,12 @@ file dưới đây. ĐỌC KỸ trước khi sửa phần dựng hình:
 - `masks.py` (SDF khử răng cưa), `media.py` (ảnh + đọc video bằng ffmpeg pipe), `comp.py` (ghép lớp),
   `textfx.py` (font tiếng Việt Montserrat/Anton trong fonts/), `grade.py` (LUT màu), `demo.py` (media mẫu).
 - `cau_hinh.yaml`: cấu hình mặc định (mẫu, màu, khung thương hiệu, handle). `HUONG_DAN.md`: hướng dẫn người dùng.
+- `kho_mau/*.yaml`: kho mẫu (công thức mo_dau / than / ket), `templates._plan_recipe` đọc. Cảnh mới trong `scenes.py`:
+  `nhay` (dồn cắt theo nốt, onset ở `beats.py`), `rap_hinh` (ráp hình, RAP_KIEU), `tuong_anh`, `nghi_den`.
+  `fx.py`: hiệu ứng vào cảnh punch/rung/nhoe/chop. Mỗi cảnh khai báo tiếng động qua `sfx()`, `render.py` trộn.
+- `amthanh.py`: tự tổng hợp nhạc (11 phong cách) + tiếng động (lệnh `tao-nhac` -> `nhac/`, `tieng_dong/`). Mỗi bài
+  có file `.json` ghi bpm/drop chính xác, `beats.detect` ưu tiên đọc file này. Chủ dự án thích kiểu reel ráp hình
+  @rasooliarts (KIEN_THUC_CAPCUT.md), ghét kiểu nhún zoom/giữ cảnh tĩnh lâu.
 
 ## Trạng thái
 - Đã chạy thử toàn bộ loại cảnh, chuyển cảnh và 3 mẫu trên Linux. 29 giây ở 1080x1920@30 dựng mất khoảng 40 giây trên 2 core.

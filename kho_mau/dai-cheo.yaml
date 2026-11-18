@@ -1,0 +1,14 @@
+ten: Dải chéo
+mo_ta: hook dồn cắt, vạch ngang mở; thân dồn cắt trong dải hẹp xen ráp hình dải chéo
+mau_sac: dien_anh
+nhac: [trap, phonk]
+mo_dau:
+  - {loai: nhay, so: 8, nguong: 2.0, vao: [nhoe], nhip: 4}
+  - {loai: nghi_den, nhip: 1}
+  - {loai: nhay, so: 1, tieu_de: true, font: impact, dai_tu: 0.004, dai_den: 1.0, dai_nhip: 2, nhip: 4}
+than:
+  - {loai: nhay, so: 8, dai_tu: 0.3, dai_den: 0.55, chu: true, nhip: 4, nhip_co_chu: 6}
+  - {loai: rap_hinh, kieu: [tron_cheo, x, tam_giac], nhip: 3}
+ket:
+  - {loai: nghi_den, nhip: 1}
+  - {loai: ket, nhip: 4}

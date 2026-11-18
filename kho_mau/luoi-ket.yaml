@@ -1,0 +1,13 @@
+ten: Lưới kết
+mo_ta: mở bằng hình nở, thân ráp hình xen dồn cắt, kết lưới 3x3 zoom ra
+mau_sac: dien_anh
+nhac: [future_bass, cinematic]
+mo_dau:
+  - {loai: hinh_mo, hinh: sao, nhip: 3}
+  - {loai: nghi_den, tieu_de: true, font: impact, nhip: 3}
+than:
+  - {loai: rap_hinh, kieu: [kim_cuong, tron_cheo, o_vuong, tam_giac], chu: true, nhip: 4, nhip_co_chu: 6}
+  - {loai: nhay, so: 6, vao: [nhoe, punch], nhip: 2}
+ket:
+  - {loai: luoi, tieu_de: true, chuyen: zoom, nhip: 8}
+  - {loai: ket, nhip: 4}

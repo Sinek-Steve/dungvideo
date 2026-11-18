@@ -1,0 +1,13 @@
+ten: Chữ X cắt chéo
+mo_ta: hình X, tam giác, zigzag và dải chéo, dồn cắt nhòe
+mau_sac: dien_anh
+nhac: [phonk, trap]
+mo_dau:
+  - {loai: rap_hinh, kieu: x, tieu_de: true, nhip: 6}
+  - {loai: nhay, so: 8, vao: [nhoe, punch], toi_drop: true, nhip: 4}
+than:
+  - {loai: rap_hinh, kieu: [tam_giac, x, zigzag], chu: true, nhip: 4, nhip_co_chu: 6}
+  - {loai: nhay, so: 6, vao: [nhoe], nhip: 2}
+ket:
+  - {loai: nghi_den, nhip: 1}
+  - {loai: ket, nhip: 4}
