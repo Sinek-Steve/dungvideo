@@ -1,0 +1,19 @@
+# Cấu hình mặc định của DựngVideo — sửa 1 lần, dùng cho mọi video.
+
+mau: tin-nhanh            # mẫu tự động: tin-nhanh | dien-anh | slideshow
+mau_sac: dien_anh         # chỉnh màu: dien_anh | sang | lanh | am | tu_nhien
+kich_thuoc: 1080x1920     # khung dọc 9:16
+fps: 30
+vignette: 0.22            # tối 4 góc (0 = tắt)
+thanh_tien_do: true       # thanh tiến độ mảnh trên cùng
+thu_muc_xuat: xuat        # video xuất ra thư mục này (trong thư mục tool)
+
+khung:                    # khung thương hiệu phủ suốt video
+  bat: true
+  kieu: toi_gian          # toi_gian | phim (viền phim) | hud (khung máy quay + REC)
+  tren: ["TIN CHỨNG KHOÁN", "{ngay}", "@hieusichungkhoan"]   # tối đa 3 nhãn, {ngay} = ngày hôm nay
+  duoi: "@hieusichungkhoan"
+  vi_tri_duoi: 0.885      # tỉ lệ chiều cao (0..1); kéo lên nếu bị chữ TikTok che
+  handle: "@hieusichungkhoan"          # hiện ở màn kết
+  loi_moi: "Theo dõi để cập nhật thị trường mỗi ngày"
+  logo: null              # đường dẫn ảnh logo (hoặc để file logo.png trong thư mục media)
