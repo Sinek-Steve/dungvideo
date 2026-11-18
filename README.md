@@ -8,3 +8,8 @@ Phong cách học từ kênh CapCut @rasooliarts: chia màn hình bằng mask, c
 - Bối cảnh cho Claude Code: [CLAUDE.md](CLAUDE.md)
 
 Chạy nhanh trên Windows: `1_CAI_DAT.bat` → `4_CHAY_THU_DEMO.bat` → kéo thả thư mục lên `2_TAO_VIDEO_TU_THU_MUC.bat`.
+
+## Giấy phép
+Mã nguồn: [MIT](LICENSE) — tự do dùng, sửa, chia sẻ, kể cả thương mại, chỉ cần giữ dòng bản quyền.
+Font trong `fonts/` (Montserrat, Anton) theo giấy phép SIL Open Font License, xem các file `OFL-*.txt`.
+`KIEN_THUC_CAPCUT.md` là ghi chép phân tích kỹ thuật dựng, không chứa video hay hình ảnh của tác giả được phân tích.
